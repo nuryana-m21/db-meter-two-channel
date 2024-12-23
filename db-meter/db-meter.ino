@@ -1,4 +1,3 @@
-	
 #include <SPI.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
@@ -9,153 +8,76 @@
 #define OLED_RESET -1       // Reset pin # (or -1 if sharing Arduino reset pin)
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
  
-String apiKey = "14K8UL2QEK8BTHN6"; // Enter your Write API key from ThingSpeak
-const char *ssid = "Alexahome";     // replace with your wifi ssid and wpa2 key
-const char *pass = "12345678";
-const char* server = "api.thingspeak.com";
- 
-const int sampleWindow = 50;                              // Sample window width in mS (50 mS = 20Hz)
+const int sampleWindow = 50;   // Sample window width in mS (50 mS = 20Hz)
 unsigned int sample;
- 
-// WiFiClient client;
  
 void setup() 
 {
-   Serial.begin(115200);                                    //Serial comms for debugging
-   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);              //OLED display start
-   display.display();                                     //show buffer
-   display.clearDisplay();                                //clear buffer
-   display.setTextSize(2);                                //Set text size to 1 (1-6)
-   display.setTextColor(WHITE);                           //Set text color to WHITE (no choice lol)
-   display.setCursor(0,0);                                //cursor to upper left corner
-   display.println("[db] METER");               //write title
-   display.display();                                     //show title
-   delay(3000);                                           //wait 2 seconds
-   
+   Serial.begin(115200);                                 // Serial comms for debugging
+   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);           // OLED display start
+   display.clearDisplay();                              // Clear buffer
+   display.setTextSize(2);                              // Set text size to 2
+   display.setTextColor(WHITE);                         // Set text color to WHITE
+   display.setCursor(0, 0);                             // Cursor to upper left corner
+   display.println("[dB] METER");                       // Write title
+   display.display();                                   // Show title
+   delay(3000);                                         // Wait 3 seconds
+   display.clearDisplay();                              // Clear the display
 }
  
-//--------------------------------------------------------------------------------------------
- //                                         MAIN LOOP
- //--------------------------------------------------------------------------------------------
-  
 void loop() 
 {
-   unsigned long startMillis= millis();                   // Start of sample window
-   float peakToPeak = 0;                                  // peak-to-peak level
- 
-   unsigned int signalMax = 0;                            //minimum value
-   unsigned int signalMin = 1024;                         //maximum value
- 
-                                                          // collect data for 50 mS
-   while (millis() - startMillis < sampleWindow)
-   {
-      sample = analogRead(0);                             //get reading from microphone
-      if (sample < 1024)                                  // toss out spurious readings
-      {
-         if (sample > signalMax)
-         {
-            signalMax = sample;                           // save just the max levels
-         }
-         else if (sample < signalMin)
-         {
-            signalMin = sample;                           // save just the min levels
-         }
-      }
-   }
-   
-   peakToPeak = signalMax - signalMin;                    // max - min = peak-peak amplitude
-   float db = map(peakToPeak,1,270,1.5,100);             //calibrate for deciBels
-   display.clearDisplay();
-   display.setCursor(3,0);                                //cursor to upper left
-   display.setTextSize(1);                             //set text size to 2
-   display.print(db);                                     //write calibrated deciBels
-   display.print(" dB ch 1");     
-   display.display();
-   display.clearDisplay(); 
-   delay();
-   
-    for(int x =3;x<125;x=x+4){                            //draw scale
-   display.drawLine(x, 32, x, 27, WHITE);    }
-   display.drawRoundRect(0, 32, 127, 10, 6, WHITE);       //draw outline of bar graph
-   int r = map(db,2,120,1,120);                           //set bar graph for width of screen
-   display.fillRoundRect(1, 33, r, 8, 6, WHITE);     //draw bar graph with a width of r
-   display.display();                                     //show all that we just wrote & drew
-   display.clearDisplay();                                //clear the display
- 
-  
-  // }
-  //   client.stop();
-  delay(0);
+   // Read and display dB for Channel 1 (A0)
+   float db1 = readDb(0);
+   display.setCursor(3, 0);                              // Top of the screen
+   display.setTextSize(1);                               // Text size 1
+   display.print("CH1: ");                               // Label for channel 1
+   display.print(db1);                                   // Write calibrated deciBels
+   display.print(" dB");                                 // Units
 
-{   unsigned long startMillis= millis();                   // Start of sample window
-   float peakToPeak = 0;                                  // peak-to-peak level
- 
-   unsigned int signalMax = 0;                            //minimum value
-   unsigned int signalMin = 1024;                         //maximum value
- 
-                                                          // collect data for 50 mS
-   while (millis() - startMillis < sampleWindow)
-   {
-      sample = analogRead(1);                             //get reading from microphone
-      if (sample < 1024)                                  // toss out spurious readings
-      {
-         if (sample > signalMax)
-         {
-            signalMax = sample;                           // save just the max levels
-         }
-         else if (sample < signalMin)
-         {
-            signalMin = sample;                           // save just the min levels
-         }
-      }
-   }
-   
-   peakToPeak = signalMax - signalMin;                    // max - min = peak-peak amplitude
-   float db = map(peakToPeak,1,270,1.5,100);             //calibrate for deciBels
-   display.setTextColor(WHITE); 
-   display.setCursor(3,10);                                //cursor to upper left
-   display.setTextSize(1);                             //set text size to 2
-   display.print(db);                                     //write calibrated deciBels
-   display.print(" dB ch 2");
-   display.display();
-   display.clearDisplay(); 
+   // Draw bar graph for Channel 1
+   display.drawRoundRect(0, 15, 127, 10, 3, WHITE);      // Outline for bar graph
+   int barWidth1 = map(db1, 2, 120, 1, 120);             // Map dB to graph width
+   display.fillRoundRect(1, 16, barWidth1, 8, 3, WHITE); // Fill bar graph
 
-    for(int x =3;x<125;x=x+4){                            //draw scale
-   display.drawLine(x, 32, x, 27, WHITE);    }
-   display.drawRoundRect(0, 32, 127, 10, 6, WHITE);       //draw outline of bar graph
-   int r = map(db,2,120,1,120);                           //set bar graph for width of screen
-   display.fillRoundRect(1, 33, r, 8, 6, WHITE);     //draw bar graph with a width of r
-   display.display();                                     //show all that we just wrote & drew
-   display.clearDisplay();                                //clear the display
- 
-  
-  // }
-  //   client.stop();
-  delay(0); 
-  }
+   // Read and display dB for Channel 2 (A1)
+   float db2 = readDb(1);
+   display.setCursor(3, 32);                             // Lower part of the screen
+   display.print("CH2: ");                               // Label for channel 2
+   display.print(db2);                                   // Write calibrated deciBels
+   display.print(" dB");                                 // Units
 
+   // Draw bar graph for Channel 2
+   display.drawRoundRect(0, 47, 127, 10, 3, WHITE);      // Outline for bar graph
+   int barWidth2 = map(db2, 2, 120, 1, 120);             // Map dB to graph width
+   display.fillRoundRect(1, 48, barWidth2, 8, 3, WHITE); // Fill bar graph
 
+   display.display();                                    // Show updated display
+   delay(500);                                           // Add delay for stability
+   display.clearDisplay();                               // Clear the display
 }
 
+// Function to read and calculate dB from analog input
+float readDb(int pin)
+{
+   unsigned long startMillis = millis();                 // Start of sample window
+   unsigned int signalMax = 0;                           // Minimum value
+   unsigned int signalMin = 1024;                        // Maximum value
 
+   // Collect data for the sample window
+   while (millis() - startMillis < sampleWindow)
+   {
+      sample = analogRead(pin);                          // Read analog input
+      if (sample < 1024)                                 // Toss out spurious readings
+      {
+         if (sample > signalMax)
+            signalMax = sample;                          // Save max levels
+         else if (sample < signalMin)
+            signalMin = sample;                          // Save min levels
+      }
+   }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+   float peakToPeak = signalMax - signalMin;             // Max - min = peak-peak amplitude
+   float db = map(peakToPeak, 1, 270, 1.5, 100);         // Calibrate for deciBels
+   return db;
+}
